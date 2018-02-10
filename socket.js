@@ -1,7 +1,6 @@
-// SOCKET LIBRARY
 var io = require('socket.io-client');
-
-// SENSOR
+var credentials = require('./credentials');
+var farmConfig = require('./farm-config');
 var sensor = require('./sensor');
 
 module.exports = {
@@ -17,7 +16,8 @@ module.exports = {
 
         socket.on('connect', function() {
             console.log('connected to server');
-            sensor.start(socket, room, token, farmerId, farmId);
+            socket.emit('subscribe', room);
+            sensor.start(room, token, farmerId, farmId);
         });
 
         socket.on('rasp-switch-light', function(data) {

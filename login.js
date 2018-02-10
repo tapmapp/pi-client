@@ -1,39 +1,32 @@
-// NODE MODULES
 var http = require('http');
 var request = require('request');
-
-// SOCKET
+var farmConfig = require('./farm-config');
 var socket = require('./socket');
-
-// CREDENTIALS
 var credentials = require('./credentials');
 
-// REQUEST CONTENT
-var json = { "email": credentials.farmer, "password": credentials.password, "farm": credentials.farm };
-
-var url = 'https://cityfarmers-api.herokuapp.com/farmer/login';
-var url2 = 'http://192.168.1.102:5000/farmer/login';
-
-// REQUEST OPTIONS
-var options = {
-    url: url,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    json: json
-};
-
-// RECONNECT TIMER VARIABLE
-var timer;
-
 // CONNECTION REQUEST FUNCTION
-var requestFunc = function(requestCallBack) {
+var login = function(loginCallBack) {
+
+    // REQUEST CONTENT
+    var json = { 'email': credentials.farmer, 'password': credentials.password, 'farm': credentials.farm };
+
+    var url = 'https://cityfarmers-api.herokuapp.com/farmer/login';
+    // var url2 = 'http://192.168.1.102:5000/farmer/login';
+
+    // REQUEST OPTIONS
+    var options = {
+        url: url,
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        json: json
+    };
 
     console.log('Connecting...');
-    request(options, requestCallBack);
+    request(options, loginCallBack);
 
 }
 
-var requestCallBack = function(err, res, body) {
+var loginCallBack = function(err, res, body) {
     if(!err && res.statusCode == 200) {
         
         console.log(' ');
@@ -41,14 +34,17 @@ var requestCallBack = function(err, res, body) {
         console.log('Starting socket...');
         console.log(' ');
 
+        // REQUEST FARM CONFIG
+        farmConfig.reqFarmConfig();
+
         // START SOCKET
-        socket.startSocket(res.body.farmerId, credentials.farmId, requestFunc, requestCallBack, credentials.farm, res.body.token);
+        socket.startSocket(res.body.farmerId, credentials.farmId, login, loginCallBack, credentials.farm, res.body.token);
 
     } else {
 
         console.log('Retrying connection...');
-        setTimeout(function(){
-            requestFunc(requestCallBack);
+        setTimeout(function() {
+            login(loginCallBack);
         }, 30000);
 
     }
@@ -56,6 +52,6 @@ var requestCallBack = function(err, res, body) {
 
 module.exports = {
     connect: function() {
-        requestFunc(requestCallBack);
+        login(loginCallBack);
     }
- }
+}

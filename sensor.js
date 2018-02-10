@@ -1,19 +1,19 @@
-// RASPBERRY MODULES
 var sensorLib = require("node-dht-sensor");
 var GPIO = require('rpi-gpio');
 var request = require('request');
 
+// TEMP / HUMIDITY PIN CONFIG
 var sensor = {
     name: "Indoor",
     type: 11,
     pin: 4
 };
 
+// SENSOR TIMER
 var timer;
 
-var valuesStore = [];
-
-var readSensor = function(socket, room, token, farmerId, farmId) {
+// READ SENSOR FUNCTION
+var readSensor = function(room, token, farmerId, farmId) {
 
     var sensorValues = sensorLib.read(sensor.type, sensor.pin);
 
@@ -39,7 +39,7 @@ var readSensor = function(socket, room, token, farmerId, farmId) {
     request(options, requestCallBack);
 
     timer = setTimeout(function() {
-        readSensor(socket, room, token, farmerId, farmId);
+        readSensor(room, token, farmerId, farmId);
     }, 10000);
 
 }
@@ -53,13 +53,15 @@ var releStatus = function(pin, status) {
 
 }
 
-// RELE PIN CONFIG
-GPIO.setup(11, GPIO.DIR_OUT, releStatus.bind(this, 11, true));
-
 module.exports = {
-    start: function(socket, room, token, farmerId, farmId) {
-        socket.emit('subscribe', room);
-        readSensor(socket, room, token, farmerId, farmId);
+    start: function(room, token, farmerId, farmId) {
+
+        // RELE PIN CONFIG
+        GPIO.setup(11, GPIO.DIR_OUT, releStatus.bind(this, 11, true));
+
+        // START READING SENSOR
+        readSensor(room, token, farmerId, farmId);
+
     },
     stop: function() {
         clearTimeout(timer);
