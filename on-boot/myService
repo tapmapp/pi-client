@@ -1,0 +1,19 @@
+#!/bin/sh
+#/etc/init.d/myService
+export PATH=$PATH:/home/pi/city-farmers
+export NODE_PATH=$NODE_PATH:/home/pi/city-farmers/node_modules
+
+case "$1" in
+start)
+
+exec forever --sourceDir=/home/pi/city-farmers -p /home/pi/city-farmers app.js #scriptarguments
+;;
+stop)
+exec forever stop --sourceDir=/home/pi/city-farmers app.js
+;;
+*)
+echo "Usage: /etc/init.d/myService {start|stop}"
+exit 1
+;;
+esac
+exit 0

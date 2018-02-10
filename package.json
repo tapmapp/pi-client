@@ -1,0 +1,21 @@
+{
+  "name": "RaspClient",
+  "version": "0.0.1",
+  "description": "CityFarmers Remote Growing Kit",
+  "engines": {
+    "node": "8.9.1"
+  },
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "dependencies": {
+    "rpi-gpio": "^0.9.1",
+    "socket.io": "^2.0.4"
+  },
+  "keywords": [
+    "rasp",
+    "cityfarmers"
+  ],
+  "license": "Francisco Roca"
+}
