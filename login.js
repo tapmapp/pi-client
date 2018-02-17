@@ -35,15 +35,15 @@ var loginCallBack = function(err, res, body) {
         console.log(' ');
 
         // REQUEST FARM CONFIG
-        farmConfig.reqFarmConfig();
+        farmConfig.reqFarmConfig(res.body.token);
 
         // START SOCKET
-        socket.startSocket(res.body.farmerId, credentials.farmId, login, loginCallBack, credentials.farm, res.body.token);
+        socket.startSocket(res.body.farmerId, credentials.farmId, login, loginCallBack, res.body.token);
 
     } else {
 
         console.log('Retrying connection...');
-        setTimeout(function() {
+        setTimeout(() => {
             login(loginCallBack);
         }, 30000);
 
