@@ -5,13 +5,16 @@ var farmConfig = require('./farm-config');
 
 // TEMP / HUMIDITY PIN CONFIG
 var sensor = {
-    name: "Indoor",
+    name: "Temp/Hum",
     type: 11,
     pin: 4
 };
 
 // TEMP HUM VALUE
-var tempHumVal;
+var tempHumVal = [];
+
+// COUNTER
+var i = 0;
 
 // SENSOR TIMER
 var piTimer;
@@ -19,11 +22,13 @@ var piTimer;
 // CHECK PI CONFIG
 var checkPiConfig = function() {
 
+    var actualFarmConfig = farmConfig.getFarmConfig();
+
     // CHECK LIGHTING CONFIG
-    var date = new Date();
+    checkLightingConfig(actualFarmConfig);
 
     // CHECK TEMP CONFIG
-    checkTempConfig();
+    checkTempConfig(actualFarmConfig);
 
     piTimer = setTimeout(function(){
         checkPiConfig();
@@ -32,16 +37,15 @@ var checkPiConfig = function() {
 }
 
 // CHECK TEMP CONFIG
-var checkTempConfig = function() {
+var checkTempConfig = function(actualFarmConfig) {
 
-    var actualFarmConfig = farmConfig.getFarmConfig();
-
-    tempHumVal = sensorLib.read(sensor.type, sensor.pin);
+    let tempHumActual = sensorLib.read(sensor.type, sensor.pin);
+    tempHumVal.push([tempHumActual.temperature, tempHumActual.humidity]);
 
     // CHECK TEMP CONFIG
     if(actualFarmConfig.length > 0) {
 
-        if(tempHumVal.temperature > actualFarmConfig[0].temperatureVent) {
+        if(tempHumActual.temperature > actualFarmConfig[0].temperatureVent) {
 
             // READ PIN
             GPIO.read(11, function(err, value) {
@@ -63,7 +67,165 @@ var checkTempConfig = function() {
     
         }
     }
+}
 
+// CHECK LIGHTING CONFIG
+var checkLightingConfig = function(actualFarmConfig) {
+
+    // CHECK TEMP CONFIG
+    if(actualFarmConfig.length > 0) {
+
+        let date = new Date();
+        let hours = date.getHours() + 1;
+        let minutes = date.getMinutes();
+
+        let timeOn = actualFarmConfig[0].lightingOn.split(':');
+        let timeOff = actualFarmConfig[0].lightingOff.split(':');
+        
+        let lightingOnHours = parseInt(timeOn[0]);
+        let lightingOnMins = parseInt(timeOn[1]);
+
+        let lightingOffHours = parseInt(timeOff[0]);
+        let lightingOffMins = parseInt(timeOff[1]);
+
+        if(lightingOnHours < lightingOffHours) {
+
+            if(hours >= lightingOnHours && hours < lightingOffHours) {
+                if(hours > lightingOnHours) {
+                    
+                    console.log('ON');
+
+                    // TURN LIGHT ON
+                    GPIO.read(13, function(err, value) {
+                        if(value !== true) {
+                            pinState(13, true);
+                        }
+                    });
+
+                } else {
+
+                    if(minutes >= lightingOnMins) {
+
+                        console.log('ON');
+
+                        // TURN LIGHT ON
+                        GPIO.read(13, function(err, value) {
+                            if(value !== true) {
+                                pinState(13, true);
+                            }
+                        });
+
+                    } else {
+                        
+                        console.log('OFF');
+
+                        // TURN LIGHT OFF
+                        GPIO.read(13, function(err, value) {
+                            if(value !== false) {
+                                pinState(13, false);
+                            }
+                        });
+
+                    }
+
+                }
+            } else {
+
+                if(hours == lightingOffHours && minutes < lightingOffMins) {
+
+                    console.log('ON');
+
+                    // TURN LIGHT ON
+                    GPIO.read(13, function(err, value) {
+                        if(value !== true) {
+                            pinState(13, true);
+                        }
+                    });
+
+                } else {
+                
+                    console.log('OFF');
+
+                    // TURN LIGHT OFF
+                    GPIO.read(13, function(err, value) {
+                        if(value !== false) {
+                            pinState(13, false);
+                        }
+                    });
+
+                }
+
+            }
+
+        } else {
+
+            if(hours >= lightingOffHours && hours < lightingOnHours) {
+                if(hours > lightingOffHours) {
+                    
+                    console.log('OFF');
+
+                    // TURN LIGHT OFF
+                    GPIO.read(13, function(err, value) {
+                        if(value !== false) {
+                            pinState(13, false);
+                        }
+                    });
+
+                } else {
+
+                    if(minutes >= lightingOffMins) {
+                        
+                        console.log('OFF');
+
+                        // TURN LIGHT OFF
+                        GPIO.read(13, function(err, value) {
+                            if(value !== false) {
+                                pinState(13, false);
+                            }
+                        });
+
+                    } else {
+                        
+                        console.log('ON');
+
+                        // TURN LIGHT ON
+                        GPIO.read(13, function(err, value) {
+                            if(value !== true) {
+                                pinState(13, true);
+                            }
+                        });
+
+                    }
+
+                }
+            } else {
+
+                if(hours == lightingOnHours && minutes < lightingOnMins) {
+
+                    console.log('OFF');
+
+                    // TURN LIGHT OFF
+                    GPIO.read(13, function(err, value) {
+                        if(value !== false) {
+                            pinState(13, false);
+                        }
+                    });
+
+                } else {
+                    
+                    console.log('ON');
+
+                    // TURN LIGHT ON
+                    GPIO.read(13, function(err, value) {
+                        if(value !== true) {
+                            pinState(13, true);
+                        }
+                    });
+
+                }
+            }
+        }
+    }
 }
 
 // SENSOR TIMER
@@ -72,30 +234,54 @@ var timer;
 // READ SENSOR FUNCTION
 var sendData = function(token, farmerId, farmId) {
 
-    var json = { farmerId: farmerId, farmId: farmId, temperature: tempHumVal.temperature, humidity: tempHumVal.humidity };
+    console.log(i);
 
-    // REQUEST OPTIONS
-    var options = {
-        url: 'https://cityfarmers-api.herokuapp.com/environment/save',
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-        json: json
-    };
+    if(i == 4) {
 
-    var requestCallBack = function(err, res, body) {
-        if(!err && res.statusCode == 200) {
-            console.log('saved!');
-        } else {
-            console.log('error!');
-            console.log(err);
+        let temp = 0;
+        let hum = 0;
+
+        for(let i = 0; i < tempHumVal.length; i++) {
+            temp += tempHumVal[i][0];
+            hum += tempHumVal[i][1];
         }
-    }
 
-    request(options, requestCallBack);
+        temp = (temp / tempHumVal.length).toFixed(1);
+        hum = (hum / tempHumVal.length).toFixed(1);
+
+        var json = { farmerId: farmerId, farmId: farmId, temperature: temp, humidity: hum };
+
+        // REQUEST OPTIONS
+        var options = {
+            url: 'https://cityfarmers-api.herokuapp.com/environment/save',
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+            json: json
+        };
+
+        var requestCallBack = function(err, res, body) {
+            if(!err && res.statusCode == 200) {
+                console.log('saved!');
+            } else {
+                console.log('error!');
+                console.log(err);
+            }
+        }
+
+        // SEND REQUEST
+        request(options, requestCallBack);
+        
+        tempHumVal.length = 0;
+        i = 0;
+
+    } else {
+        
+        i++;
+    }
 
     timer = setTimeout(function() {
         sendData(token, farmerId, farmId);
-    }, 5000);
+    }, 1000);
 
 }
 
@@ -108,6 +294,9 @@ var pinState = function(pin, status) {
     });
 
 }
+
+// LIGHTING PIN CONFIG
+GPIO.setup(13, GPIO.DIR_OUT, pinState.bind(this, 13, false));
 
 // VENTILATION PIN CONFIG
 GPIO.setup(11, GPIO.DIR_OUT, pinState.bind(this, 11, false));
